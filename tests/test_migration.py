@@ -6,28 +6,25 @@ import pytest
 
 
 def test_migration(
-    chain,
-    token,
     vault,
+    old_strategy,
     strategy,
-    amount,
-    Strategy,
     strategist,
     gov,
     user,
+    token,
     RELATIVE_APPROX,
 ):
-    # Deposit to the vault and harvest
-    token.approve(vault.address, amount, {"from": user})
-    vault.deposit(amount, {"from": user})
-    chain.sleep(1)
-    strategy.harvest()
-    assert pytest.approx(strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX) == amount
-
-    # migrate to a new strategy
-    new_strategy = strategist.deploy(Strategy, vault)
-    vault.migrateStrategy(strategy, new_strategy, {"from": gov})
+    loose_want_amount = token.balanceOf(old_strategy)
+    old_strategy.setForceMigrate(True, {"from": gov})
+    vault.migrateStrategy(old_strategy, strategy, {"from": gov})
     assert (
-        pytest.approx(new_strategy.estimatedTotalAssets(), rel=RELATIVE_APPROX)
-        == amount
+        strategy.estimatedTotalAssets()
+        == loose_want_amount
     )
+
+    tx = strategy.harvest({"from": gov})
+    harvested_event = tx.events["Harvested"]
+
+    assert(harvested_event['profit'] == 0)
+    assert(harvested_event['debtPayment'] == loose_want_amount)
