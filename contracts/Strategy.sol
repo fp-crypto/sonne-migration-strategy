@@ -50,7 +50,7 @@ contract Strategy is BaseStrategy {
             if (_wantBalance >= _profit + _debtOutstanding) {
                 _debtPayment = _debtOutstanding;
             } else {
-                if (_wantBalance > _profit) {
+                if (_wantBalance >= _profit) {
                     unchecked {
                         _debtPayment = _wantBalance - _profit;
                     }
