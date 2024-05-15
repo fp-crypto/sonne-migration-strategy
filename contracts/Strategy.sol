@@ -17,6 +17,7 @@ contract Strategy is BaseStrategy {
     CErc20I public immutable cToken;
 
     constructor(address _vault, address _ctoken) BaseStrategy(_vault) {
+        require(CErc20I(_ctoken).underlying() == address(want), "!want"); // dev: not want
         cToken = CErc20I(_ctoken);
     }
 
@@ -66,13 +67,11 @@ contract Strategy is BaseStrategy {
         }
     }
 
-    function adjustPosition(uint256 _debtOutstanding) internal override {
-    }
+    function adjustPosition(uint256 _debtOutstanding) internal override {}
 
     function liquidatePosition(
         uint256 _amountNeeded
-    ) internal override returns (uint256 _liquidatedAmount, uint256 _loss) {
-    }
+    ) internal override returns (uint256 _liquidatedAmount, uint256 _loss) {}
 
     function liquidateAllPositions() internal override returns (uint256) {
         // TODO: Liquidate all positions and return the amount freed.
@@ -81,8 +80,7 @@ contract Strategy is BaseStrategy {
 
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
 
-    function prepareMigration(address _newStrategy) internal override {
-    }
+    function prepareMigration(address _newStrategy) internal override {}
 
     function protectedTokens()
         internal
