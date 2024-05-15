@@ -2,6 +2,13 @@ import pytest
 from brownie import config, Contract, interface
 
 
+# Function scoped isolation fixture to enable xdist.
+# Snapshots the chain before each test and reverts after test completion.
+@pytest.fixture(scope="function", autouse=True)
+def shared_setup(fn_isolation):
+    pass
+
+
 @pytest.fixture
 def gov(accounts, vault):
     yield accounts.at(vault.governance(), force=True)
@@ -42,6 +49,11 @@ def whale(accounts):
     yield accounts.at("0xBA12222222228d8Ba445958a75a0704d566BF2C8", force=True)
 
 
+@pytest.fixture
+def comptroller(old_strategy):
+    yield Contract(old_strategy.compound())
+
+
 strategies = {
     "DAI": "0x5aa0D7821a23817D77cdBb7E4A0cA106f2583345",
     "USDC": "0xAb9CB23b135aE489Aea28dBedeB082f10772D0c4",
@@ -61,9 +73,11 @@ def old_strategy(request):
     strategy = interface.LevSonne(strategies[strategy_symbol])
     return strategy
 
+
 @pytest.fixture
 def token(old_strategy):
     yield Contract(old_strategy.want())
+
 
 @pytest.fixture
 def amount(accounts, token, user, whale):
@@ -86,13 +100,11 @@ def strategy(strategist, vault, Strategy, old_strategy):
     yield strategy
 
 
+@pytest.fixture
+def airdrop(whale):
+    return lambda token, to, amount: token.transfer(to, amount, {"from": whale})
+
+
 @pytest.fixture(scope="session")
 def RELATIVE_APPROX():
     yield 1e-5
-
-
-# Function scoped isolation fixture to enable xdist.
-# Snapshots the chain before each test and reverts after test completion.
-@pytest.fixture(scope="function", autouse=True)
-def shared_setup(fn_isolation):
-    pass

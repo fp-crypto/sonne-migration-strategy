@@ -114,13 +114,6 @@ contract Strategy is BaseStrategy {
         return _amtInWei;
     }
 
-    //emergency function that we can use to deleverage manually if something is broken
-    function manualDeleverage(uint256 amount) external onlyEmergencyAuthorized {
-        require(cToken.redeemUnderlying(amount) == 0);
-        require(cToken.repayBorrow(amount) == 0);
-    }
-
-    //emergency function that we can use to deleverage manually if something is broken
     function manualReleaseWant(uint256 amount) external onlyEmergencyAuthorized {
         require(cToken.redeemUnderlying(amount) == 0); // dev: !manual-release-want
     }
