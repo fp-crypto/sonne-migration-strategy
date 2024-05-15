@@ -59,7 +59,6 @@ strategies = {
     "USDC": "0xAb9CB23b135aE489Aea28dBedeB082f10772D0c4",
     "USDT": "0x5c7660C1967d7315EeFe6c1101Ec03d4Cd04a4Ce",
     "WETH": "0x64d23f2efed691A86Db3603319562E8287bD342f",
-    "OP": "0x1E88B832e3E8247C38A088511F0bf243DFa00973",
 }
 
 # TODO: uncomment those tokens you want to test as want
@@ -76,7 +75,12 @@ def old_strategy(request):
 
 @pytest.fixture
 def token(old_strategy):
-    yield Contract(old_strategy.want())
+    yield interface.IERC20(old_strategy.want())
+
+
+@pytest.fixture
+def ctoken(old_strategy):
+    yield interface.CErc20I(old_strategy.cToken())
 
 
 @pytest.fixture
@@ -95,8 +99,14 @@ def vault(pm, old_strategy):
 
 
 @pytest.fixture
-def strategy(strategist, vault, Strategy, old_strategy):
-    strategy = strategist.deploy(Strategy, vault, old_strategy.cToken())
+def strategy_factory(strategist, StrategyFactory):
+    strategy_factory = strategist.deploy(StrategyFactory)
+    yield strategy_factory
+
+
+@pytest.fixture
+def strategy(strategist, vault, Strategy, ctoken):
+    strategy = strategist.deploy(Strategy, vault, ctoken)
     yield strategy
 
 
@@ -108,3 +118,19 @@ def airdrop(whale):
 @pytest.fixture(scope="session")
 def RELATIVE_APPROX():
     yield 1e-5
+
+
+# @pytest.fixture(scope="session", autouse=True)
+def tenderly_fork(timeout_seconds=60):
+    import requests
+    import brownie
+    from brownie import chain
+
+    fork_id = "555398e5-aedb-4e34-8ad4-3dc13f35b605"
+    fork_rpc_url = f"https://rpc.tenderly.co/fork/{fork_id}"
+    print(fork_rpc_url)
+    tenderly_provider = brownie.web3.HTTPProvider(
+        fork_rpc_url, {"timeout": timeout_seconds}
+    )
+    brownie.web3.provider = tenderly_provider
+    print(f"https://dashboard.tenderly.co/yearn/yearn-web/fork/{fork_id}")

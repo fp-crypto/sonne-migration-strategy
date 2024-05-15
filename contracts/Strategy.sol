@@ -46,7 +46,7 @@ contract Strategy is BaseStrategy {
                 _profit = _wantBalance - _debt;
             }
 
-            if (_wantBalance > _profit + _debtOutstanding) {
+            if (_wantBalance >= _profit + _debtOutstanding) {
                 _debtPayment = _debtOutstanding;
             } else {
                 if (_wantBalance > _profit) {
@@ -67,8 +67,6 @@ contract Strategy is BaseStrategy {
     }
 
     function adjustPosition(uint256 _debtOutstanding) internal override {
-        // TODO: Do something to invest excess `want` tokens (from the Vault) into your positions
-        // NOTE: Try to adjust positions so that `_debtOutstanding` can be freed up on *next* harvest (not immediately)
     }
 
     function liquidatePosition(
@@ -114,7 +112,15 @@ contract Strategy is BaseStrategy {
         return _amtInWei;
     }
 
-    function manualReleaseWant(uint256 amount) external onlyEmergencyAuthorized {
+    function manualReleaseWant(uint256 amount) external {
+        _manualReleaseWant(amount);
+    }
+
+    function manualReleaseWant() external {
+        _manualReleaseWant(want.balanceOf(address(cToken)));
+    }
+
+    function _manualReleaseWant(uint256 amount) internal {
         require(cToken.redeemUnderlying(amount) == 0); // dev: !manual-release-want
     }
 }
