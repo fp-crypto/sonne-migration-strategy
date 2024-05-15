@@ -6,6 +6,7 @@ pragma experimental ABIEncoderV2;
 
 import "@yearn-vaults/contracts/BaseStrategy.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../interfaces/CErc20I.sol";
 
 // Import interfaces for many popular DeFi projects, or add your own!
 //import "../interfaces/<protocol>/<Interface>.sol";
@@ -13,7 +14,11 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 contract Strategy is BaseStrategy {
     using SafeERC20 for IERC20;
 
-    constructor(address _vault) BaseStrategy(_vault) {}
+    CErc20I public immutable cToken;
+
+    constructor(address _vault, address _ctoken) BaseStrategy(_vault) {
+        cToken = CErc20I(_ctoken);
+    }
 
     // ******** OVERRIDE THESE METHODS FROM BASE CONTRACT ************
 
@@ -69,15 +74,6 @@ contract Strategy is BaseStrategy {
     function liquidatePosition(
         uint256 _amountNeeded
     ) internal override returns (uint256 _liquidatedAmount, uint256 _loss) {
-        uint256 totalAssets = want.balanceOf(address(this));
-        if (_amountNeeded > totalAssets) {
-            _liquidatedAmount = totalAssets;
-            unchecked {
-                _loss = _amountNeeded - totalAssets;
-            }
-        } else {
-            _liquidatedAmount = _amountNeeded;
-        }
     }
 
     function liquidateAllPositions() internal override returns (uint256) {
@@ -88,23 +84,8 @@ contract Strategy is BaseStrategy {
     // NOTE: Can override `tendTrigger` and `harvestTrigger` if necessary
 
     function prepareMigration(address _newStrategy) internal override {
-        // TODO: Transfer any non-`want` tokens to the new strategy
-        // NOTE: `migrate` will automatically forward all `want` in this strategy to the new one
     }
 
-    // Override this to add all tokens/tokenized positions this contract manages
-    // on a *persistent* basis (e.g. not just for swapping back to want ephemerally)
-    // NOTE: Do *not* include `want`, already included in `sweep` below
-    //
-    // Example:
-    //
-    //    function protectedTokens() internal override view returns (address[] memory) {
-    //      address[] memory protected = new address[](3);
-    //      protected[0] = tokenA;
-    //      protected[1] = tokenB;
-    //      protected[2] = tokenC;
-    //      return protected;
-    //    }
     function protectedTokens()
         internal
         view
@@ -131,5 +112,16 @@ contract Strategy is BaseStrategy {
     ) public view virtual override returns (uint256) {
         // TODO create an accurate price oracle
         return _amtInWei;
+    }
+
+    //emergency function that we can use to deleverage manually if something is broken
+    function manualDeleverage(uint256 amount) external onlyEmergencyAuthorized {
+        require(cToken.redeemUnderlying(amount) == 0);
+        require(cToken.repayBorrow(amount) == 0);
+    }
+
+    //emergency function that we can use to deleverage manually if something is broken
+    function manualReleaseWant(uint256 amount) external onlyEmergencyAuthorized {
+        require(cToken.redeemUnderlying(amount) == 0); // dev: !manual-release-want
     }
 }

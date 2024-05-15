@@ -81,8 +81,8 @@ def vault(pm, old_strategy):
 
 
 @pytest.fixture
-def strategy(strategist, vault, Strategy):
-    strategy = strategist.deploy(Strategy, vault)
+def strategy(strategist, vault, Strategy, old_strategy):
+    strategy = strategist.deploy(Strategy, vault, old_strategy.cToken())
     yield strategy
 
 

@@ -1,7 +1,3 @@
-# TODO: Add tests that show proper migration of the strategy to a newer one
-#       Use another copy of the strategy to simulate the migration
-#       Show that nothing is lost!
-
 import pytest
 
 
@@ -9,13 +5,12 @@ def test_migration(
     vault,
     old_strategy,
     strategy,
-    strategist,
     gov,
-    user,
     token,
-    RELATIVE_APPROX,
 ):
     loose_want_amount = token.balanceOf(old_strategy)
+    old_strategy_debt = vault.strategies(old_strategy).dict()['totalDebt']
+    expected_loss = old_strategy_debt - loose_want_amount
     old_strategy.setForceMigrate(True, {"from": gov})
     vault.migrateStrategy(old_strategy, strategy, {"from": gov})
     assert (
@@ -25,6 +20,8 @@ def test_migration(
 
     tx = strategy.harvest({"from": gov})
     harvested_event = tx.events["Harvested"]
+    print(harvested_event)
 
     assert(harvested_event['profit'] == 0)
+    assert(harvested_event['loss'] == expected_loss)
     assert(harvested_event['debtPayment'] == loose_want_amount)
