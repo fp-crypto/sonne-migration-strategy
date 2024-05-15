@@ -26,6 +26,31 @@ def test_migration(
     assert harvested_event["debtPayment"] == loose_want_amount
 
 
+def test_migration_with_airdrop_before_harvest(
+    vault, old_strategy, strategy, gov, token, airdrop
+):
+    loose_want_amount = token.balanceOf(old_strategy)
+    old_strategy_debt = vault.strategies(old_strategy).dict()["totalDebt"]
+    expected_loss = old_strategy_debt - loose_want_amount
+    old_strategy.setForceMigrate(True, {"from": gov})
+    vault.migrateStrategy(old_strategy, strategy, {"from": gov})
+
+    assert strategy.estimatedTotalAssets() == loose_want_amount
+
+    airdrop_amount = 10_000e6
+    airdrop(token, strategy, airdrop_amount)
+
+    assert strategy.estimatedTotalAssets() == loose_want_amount + airdrop_amount
+
+    tx = strategy.harvest({"from": gov})
+    harvested_event = tx.events["Harvested"]
+    print(harvested_event)
+
+    assert harvested_event["profit"] == 0
+    assert harvested_event["loss"] == expected_loss - airdrop_amount
+    assert harvested_event["debtPayment"] == loose_want_amount + airdrop_amount
+
+
 def test_migration_with_ctoken_sweep(
     vault, old_strategy, strategy, gov, token, comptroller, ctoken, whale, user
 ):
@@ -48,6 +73,7 @@ def test_migration_with_ctoken_sweep(
 
     strategy.manualReleaseWant(release_amount, {"from": user})
 
+    chain.sleep(1)
     tx = strategy.harvest({"from": gov})
     harvested_event = tx.events["Harvested"]
     print(harvested_event)
@@ -79,6 +105,7 @@ def test_migration_with_ctoken_sweep_no_amount(
 
     strategy.manualReleaseWant({"from": user})
 
+    chain.sleep(1)
     tx = strategy.harvest({"from": gov})
     harvested_event = tx.events["Harvested"]
     print(harvested_event)
@@ -118,11 +145,12 @@ def test_migration_twice(
     assert harvested_event["debtPayment"] == 0
 
 
-def test_migration_with_airdrop(vault, old_strategy, strategy, gov, token, airdrop):
+def test_migration_with_airdrop_after_first_harvest(
+    vault, old_strategy, strategy, gov, token, airdrop
+):
     test_migration(vault, old_strategy, strategy, gov, token)
 
     airdrop_amount = 10_000e6
-
     airdrop(token, strategy, airdrop_amount)
 
     chain.sleep(1)
